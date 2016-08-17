@@ -1,0 +1,12 @@
+# depslib dependency file v1.0
+1471430751 source:/home/snk/Documents/DataCleanDemo1/main.cpp
+	<string>
+	<vector>
+	<iostream>
+	<fstream>
+	<sstream>
+	<cstdlib>
+	<cctype>
+	<iomanip>
+	<mysql/mysql.h>
+
