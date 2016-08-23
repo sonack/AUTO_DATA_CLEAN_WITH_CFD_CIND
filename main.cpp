@@ -229,14 +229,70 @@ string buildConstantQuery(int tableauNo)
     bool first = true;
     for(int f = Tp.getFields(); i < f; i++)
     {
-        if(!first) sql = sql + " OR ";
-        sql = sql + defineNotEqual("t." + Tp.getSchema(i),"tp." + Tp.getSchema(i));
         if(first) first = false;
+        else sql = sql + " OR ";
+        sql = sql + defineNotEqual("t." + Tp.getSchema(i),"tp." + Tp.getSchema(i));
+
     }
     sql += " );";
     return sql;
 }
 
+
+
+/**
+构建变CFD查询语句
+*/
+
+string buildVariableQuery(int tableauNo)
+{
+    Tableau &Tp = *T[tableauNo];
+    string sql = "SELECT GROUP_CONCAT( DISTINCT ";
+    for(int i = 0, d = Tp.getDelimiter(); i < d; i++)
+    {
+        if(i) sql += " , ',' , ";        // 分隔
+        sql += "t." + Tp.getSchema(i);
+    }
+    sql += " ) violation_X FROM ";  // 命名为violation_X
+    sql = sql + dataTableName;
+    sql = sql + " as t, ";
+    sql = sql + patternTableName;
+    sql = sql + " as tp";
+    sql = sql + " WHERE ";
+    int i = 0;
+    for(int d = Tp.getDelimiter(); i < d; i++)
+    {
+       sql += defineEqual("t." + Tp.getSchema(i),"tp." + Tp.getSchema(i)) + " AND ";
+    }
+    sql += "( ";
+    bool first = true;
+    for(int f = Tp.getFields(); i < f; i++)
+    {
+        if(first) first = false;
+        else sql = sql + " OR ";
+        sql = sql + "tp." + Tp.getSchema(i) + " = '_'";
+
+    }
+    sql += " ) GROUP BY ";
+    i = 0;
+    for(int d = Tp.getDelimiter(); i < d; i++)
+    {
+       if(i) sql += " , ";
+       sql += "t." + Tp.getSchema(i);
+    }
+    sql += " HAVING COUNT( DISTINCT ";
+    first = true;
+    for(int f = Tp.getFields(); i < f; i++)
+    {
+        if(first) first = false;
+        else sql = sql + " , ";
+        sql = sql + "t." + Tp.getSchema(i);
+
+    }
+    sql += " ) > 1;";
+    cout << "TESTING..." << sql << endl;
+    return sql;
+}
 /**
 
 展现查询结果 res
@@ -262,6 +318,17 @@ void displayResult(int tableauNum)
     }
     cout << "共有" << rowCnt << "条违例." << endl;
 
+}
+
+void VariableQuery()
+{
+    for(int i=0;i<tableauNum;i++)
+    {
+        mysql_query(&mysql,buildVariableQuery(i).c_str());
+        res = mysql_store_result(&mysql);
+        cout << T[i]->getName() << " Qv违例如下:" << endl;
+        displayResult(i);
+    }
 }
 void ConstantQuery()
 {
@@ -293,6 +360,7 @@ int main()
     initMySQL();        //初始化MySQL连接
     buildPatternTable();    //根据读取的CFD规则在MySQL中构建模式表Tableau
     ConstantQuery();    //进行常CFD查询(aka: single constant)
+    VariableQuery();    //进行变CFD查询(aka: multiple constant)
     closeMySQL();   //关闭MySQL连接
     return 0;
 }
