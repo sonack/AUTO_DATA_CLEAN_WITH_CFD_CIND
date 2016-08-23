@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1471940597 source:/home/snk/Documents/DataCleanDemo1/main.cpp
+1471948830 source:/home/snk/Documents/DataCleanDemo1/main.cpp
 	<string>
 	<vector>
 	<iostream>
@@ -8,5 +8,6 @@
 	<cstdlib>
 	<cctype>
 	<iomanip>
+	<algorithm>
 	<mysql/mysql.h>
 
