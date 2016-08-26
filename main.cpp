@@ -300,54 +300,73 @@ string buildConstantQuery()
 }
 
 
+string buildVariableMacro()
+{
+    string sql = "SELECT ";
+    for(unsigned int i = 0; i < Z.size(); i++)
+    {
+        sql += "( CASE tpz." + Z[i] + " WHEN '@' THEN '@' ELSE t." + Z[i] + " END ) AS Z_" + Z[i] + " , ";
+    }
+    for(unsigned int i = 0; i < W.size(); i++)
+    {
+        if(i) sql += " , ";
+        sql += "( CASE tpw." + W[i] + " WHEN '@' THEN '@' ELSE t." + W[i] + " END ) AS W_" + W[i] ;
+    }
+    sql += " FROM employee t,Z tpz,W tpw   WHERE tpz.id = tpw.id AND ";
+    for(unsigned int i = 0; i < Z.size(); i++)
+    {
+        sql = sql + defineEqual("t." + Z[i],"tpz." + Z[i]) + " AND ";
+    }
+    sql += "( ";
+    bool first = true;
+    for(unsigned int i = 0; i < W.size(); i++)
+    {
+        if(first) first = false;
+        else sql = sql + " OR ";
+        sql = sql + "tpw." + W[i] + " = '_'";
 
+    }
+    sql += " )";
+    return sql;
+}
+
+
+string violationZ()
+{
+    string vZ = Z[0];
+    for(unsigned int i = 1 ; i < Z.size(); i ++)
+    {
+        vZ += "_"+Z[i];
+    }
+    return vZ;
+}
 /**
 构建变CFD查询语句
 */
 
-string buildVariableQuery(int tableauNo)
+string buildVariableQuery()
 {
-    Tableau &Tp = *T[tableauNo];
     string sql = "SELECT GROUP_CONCAT( DISTINCT ";
-    for(int i = 0, d = Tp.getDelimiter(); i < d; i++)
+    for(unsigned int i = 0; i < Z.size(); i++)
     {
         if(i) sql += " , ',' , ";        // 分隔
-        sql += "t." + Tp.getSchema(i);
+        sql += "Z_" + Z[i];
     }
-    sql += " ) violation_X FROM ";  // 命名为violation_X
-    sql = sql + dataTableName;
-    sql = sql + " as t, ";
-    sql = sql + patternTableName;
-    sql = sql + " as tp";
-    sql = sql + " WHERE ";
-    int i = 0;
-    for(int d = Tp.getDelimiter(); i < d; i++)
-    {
-       sql += defineEqual("t." + Tp.getSchema(i),"tp." + Tp.getSchema(i)) + " AND ";
-    }
-    sql += "( ";
-    bool first = true;
-    for(int f = Tp.getFields(); i < f; i++)
-    {
-        if(first) first = false;
-        else sql = sql + " OR ";
-        sql = sql + "tp." + Tp.getSchema(i) + " = '_'";
+    sql += " ) " + violationZ() + " FROM ";  // 命名为violation_Z
+    sql = sql + "( " + buildVariableMacro() + " ) Tm GROUP BY ";
 
-    }
-    sql += " ) GROUP BY ";
-    i = 0;
-    for(int d = Tp.getDelimiter(); i < d; i++)
+    for(unsigned int i = 0; i < Z.size(); i++)
     {
        if(i) sql += " , ";
-       sql += "t." + Tp.getSchema(i);
+       sql += "Z_" + Z[i];
     }
     sql += " HAVING COUNT( DISTINCT ";
-    first = true;
-    for(int f = Tp.getFields(); i < f; i++)
+    bool first = true;
+    for(unsigned int i = 0; i < W.size(); i++)
     {
         if(first) first = false;
         else sql = sql + " , ";
-        sql = sql + "t." + Tp.getSchema(i);
+        sql = sql + "W_" + W[i];
 
     }
     sql += " ) > 1;";
@@ -380,15 +399,16 @@ void displayResult()
 
 }
 
+
+
 void VariableQuery()
 {
-    for(int i=0;i<tableauNum;i++)
-    {
-        mysql_query(&mysql,buildVariableQuery(i).c_str());
-        res = mysql_store_result(&mysql);
-        cout << T[i]->getName() << " Qv违例如下:" << endl;
-        displayResult();
-    }
+
+    mysql_query(&mysql,buildVariableQuery().c_str());
+    res = mysql_store_result(&mysql);
+    cout << " Qv违例如下:" << endl;
+    displayResult();
+
 }
 void ConstantQuery()
 {
@@ -429,11 +449,6 @@ int main()
     buildPatternAllTable();    //根据读取的CFD规则在MySQL中构建模式表Tableau
     ConstantQuery();    //进行常CFD查询(aka: single constant)
     VariableQuery();    //进行变CFD查询(aka: multiple constant)
-
-
-
-
-
     closeMySQL();   //关闭MySQL连接
     return 0;
 }

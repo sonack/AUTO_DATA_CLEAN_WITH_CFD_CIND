@@ -1,8 +1,13 @@
+# f1
+CC zip | street
+44 _ _
+
 # f2
 CC AC phn | street city zip
 _ _ _ _ _ _
 44 131 _ _ EDI _
 01 908 _ _ MH _
+
 # f3
 CC AC | city
 _ _ _
